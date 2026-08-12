@@ -2,16 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { IdentityContribution } from "../identity-map";
+import { FrequencySentence, type IdentityContribution } from "../identity-map";
+import { drawAtlasPaper } from "../map-canvas";
+import { FacilitatorStudio } from "./facilitator-studio";
 
 type Stage = "building" | "witness" | "landing";
 
-function repeat(text: string) {
-  return `${text}   ·   ${text}`;
-}
-
 function laneStyle(index: number, total: number) {
-  const top = total <= 1 ? 44 : 12 + index * (68 / (total - 1));
+  const top = total <= 1 ? 44 : 12 + index * (58 / (total - 1));
   return {
     "--lane-top": `${top}%`,
     "--lane-delay": `${-((index * 1.3) % 8)}s`,
@@ -72,25 +70,29 @@ export function CollageWall() {
   async function downloadMap() {
     const canvas = document.createElement("canvas"); canvas.width = 1920; canvas.height = 1080;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
-    const image = new Image(); image.src = "/identity-map-field.png";
-    await new Promise<void>((resolve) => { image.onload = () => resolve(); image.onerror = () => resolve(); });
-    if (image.width) ctx.drawImage(image, 0, 0, 1920, 1080); else { ctx.fillStyle = "#f2e8da"; ctx.fillRect(0, 0, 1920, 1080); }
-    ctx.fillStyle = "rgba(242,232,218,.18)"; ctx.fillRect(0, 0, 1920, 1080);
-    ctx.direction = "rtl"; ctx.textAlign = "center"; ctx.fillStyle = "#3b2b29"; ctx.font = "700 56px Arial"; ctx.fillText("המרחק ביני לביני", 960, 82);
+    drawAtlasPaper(ctx, 1920, 1080);
+    await Promise.all([
+      document.fonts.load('600 56px "Barlev"'),
+      document.fonts.load('700 40px "Polin"'),
+      document.fonts.load('700 18px "NotoBrand"'),
+    ]).catch(() => undefined);
+    ctx.direction = "rtl"; ctx.textAlign = "center"; ctx.fillStyle = "#352e2b"; ctx.font = '600 64px "Barlev", Arial'; ctx.fillText("המרחק ביני לביני", 960, 82);
     const words = shared.flatMap((tile) => [tile.currentPhrase, tile.futurePhrase, tile.commitment]).filter(Boolean) as string[];
-    words.slice(0, 28).forEach((word, index) => { const x = 110 + ((index * 263) % 1700); const y = 190 + ((index * 151) % 720); ctx.save(); ctx.translate(x, y); ctx.rotate((((index * 13) % 18) - 9) * Math.PI / 180); ctx.fillStyle = index % 3 === 0 ? "#b65c4a" : index % 3 === 1 ? "#75556f" : "#3b2b29"; ctx.font = `${index % 4 === 0 ? 700 : 500} ${28 + (index % 5) * 6}px Arial`; ctx.fillText(word.slice(0, 42), 0, 0); ctx.restore(); });
-    ctx.fillStyle = "#816f68"; ctx.font = "400 22px Arial"; ctx.fillText("מילים שנבחרו להצטרף, ללא שמות.", 960, 1008); ctx.font = "400 18px Arial"; ctx.fillText("כל הזכויות שמורות © 2026, קרן בן עמי, אמא מגשימה", 960, 1046);
+    words.slice(0, 28).forEach((word, index) => { const x = 170 + ((index * 263) % 1580); const y = 190 + ((index * 151) % 720); ctx.save(); ctx.translate(x, y); ctx.rotate((((index * 13) % 6) - 3) * Math.PI / 180); ctx.fillStyle = index % 3 === 0 ? "#a45f3e" : index % 3 === 1 ? "#684b59" : "#352e2b"; ctx.font = `${index % 4 === 0 ? 700 : 400} ${28 + (index % 5) * 6}px "Polin", Arial`; ctx.fillText(word.slice(0, 42), 0, 0, 640); ctx.restore(); });
+    ctx.fillStyle = "#766761"; ctx.font = '400 22px "Polin", Arial'; ctx.fillText("מילים שנבחרו להצטרף, ללא שמות.", 960, 1008); ctx.font = '700 18px "NotoBrand", Arial'; ctx.fillText("כל הזכויות שמורות © 2026, קרן בן עמי, אמא מגשימה", 960, 1046);
     const link = document.createElement("a"); link.download = "מפת-נקודה-בזמן-המרחק-ביני-לביני.png"; link.href = canvas.toDataURL("image/png"); link.click();
   }
 
+  if (control) return <FacilitatorStudio />;
+
   return (
     <main className={`wall-shell word-map-wall stage-${stage} ${control ? "has-control" : ""}`}>
-      <header className="wall-header"><div><span>להיות אני</span><strong>המרחק ביני לביני</strong><small><b>מפת נקודה בזמן</b> מילים שנבחרו להצטרף, ללא שמות.</small></div><div className="wall-count">{shared.length ? countLabel : "המפה מחכה למילה הראשונה"}</div></header>
+      <header className="wall-header"><div><span>להיות אני</span><strong>המרחק ביני לביני</strong><small><b>מפת נקודה בזמן</b> מילים שנבחרו להצטרף, ללא שמות.</small></div><div className="wall-meta"><div className="wall-count">{shared.length ? countLabel : "המפה מחכה למילה הראשונה"}</div><div className="wall-brand-signature">קרן בן עמי | אמא מגשימה</div></div></header>
 
       <section className="collective-word-map" aria-live="polite" aria-label={`מפה משותפת ובה ${shared.length} נקודות בזמן`}>
         <div className="collective-haze" />
         <div className="contribution-lanes">
-          {waveLanes.map((lane, index) => <div className={`collective-lane lane-${lane.kind}`} style={laneStyle(index, waveLanes.length)} key={`${lane.kind}-${index}`}><div className="wave-track"><span>{repeat(lane.text)}</span><span aria-hidden="true">{repeat(lane.text)}</span></div></div>)}
+          {waveLanes.map((lane, index) => <div className={`collective-lane lane-${lane.kind}`} style={laneStyle(index, waveLanes.length)} key={`${lane.kind}-${index}`}><div className="wave-track"><FrequencySentence text={lane.text} fallback="הקול של השדה" amplitude={2.15} /><FrequencySentence text={lane.text} fallback="הקול של השדה" amplitude={2.15} hidden /></div></div>)}
         </div>
         {commitments.length > 0 && <div className="commitment-river" aria-label="התחייבויות שנבחרו להצטרף"><div>{[...commitments, ...commitments].map((commitment, index) => <span key={`${commitment}-${index}`}><i />{commitment}</span>)}</div></div>}
         {shared.length === 0 && <div className="empty-map"><p>עוד רגע מילה אחת תתחיל לנוע.</p><small>הווה, עתיד, התחייבות קטנה.</small></div>}
@@ -98,7 +100,7 @@ export function CollageWall() {
         {stage === "landing" && <div className="wall-overlay landing-overlay"><span>נחיתה</span><h1>איזו מילה מהגל<br />את לוקחת איתך?</h1><p>אין צורך לענות בקול.</p></div>}
       </section>
 
-      <footer className="wall-footer"><span><b className="legend-now" /> הווה נע ביין. <b className="legend-next" /> עתיד נע בזהב. <b className="legend-point" /> התחייבות נשארת כנקודה.</span><span>כל הזכויות שמורות © 2026, קרן בן עמי, אמא מגשימה</span></footer>
+      <footer className="wall-footer"><span><b className="legend-now" /> הווה נע בדיו. <b className="legend-next" /> עתיד נע בחמרה. <b className="legend-point" /> התחייבות נשארת כנקודה.</span><span>כל הזכויות שמורות © 2026, קרן בן עמי, אמא מגשימה</span></footer>
 
       {control && <aside className="wall-controls" aria-label="בקר למנחה, קרן"><div className="control-title"><strong>בקר למנחה</strong><span>{frozen ? "העדכונים עצורים" : "המפה מתעדכנת"}</span></div><p className="control-help">הבקר גלוי רק אצלך. מכאן את מחליפה את מה שהקבוצה רואה.</p><div className="control-grid"><button onClick={() => setStage("building")} className={stage === "building" ? "active" : ""}>המפה החיה</button><button onClick={() => setStage("witness")} className={stage === "witness" ? "active" : ""}>רואות יחד</button><button onClick={() => setStage("landing")} className={stage === "landing" ? "active" : ""}>שאלת סיום</button><button onClick={() => setFrozen((v) => !v)}>{frozen ? "המשיכי עדכונים" : "עצרי עדכונים"}</button><button onClick={() => document.documentElement.requestFullscreen?.()}>מסך מלא</button><button onClick={downloadMap}>הורידי את המפה</button></div><div className="link-actions"><button onClick={() => copyLink("participant")}>{copied === "participant" ? "הקישור הועתק" : "העתיקי קישור למשתתפות"}</button><button onClick={() => copyLink("wall")}>{copied === "wall" ? "הקישור הועתק" : "העתיקי קישור למסך הקבוצה"}</button></div></aside>}
     </main>
