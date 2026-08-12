@@ -11,7 +11,7 @@ const drive = (id: string) => `https://drive.google.com/thumbnail?id=${id}&sz=w1
 export const evidenceParticipants: EvidenceParticipant[] = [
   { name: "נטלי ארנטוף", oldImage: asset("natali_old.jpg"), newImage: asset("natali_new.jpg") },
   { name: "אדווה אביכזר", oldImage: asset("adva_old.jpg"), newImage: asset("adva_new.jpg") },
-  { name: "קרן שביל ארבל", oldImage: asset("keren_old.jpg"), newImage: asset("keren_new.jpg") },
+  { name: "קרן שביב ארבל", oldImage: asset("keren_old.jpg"), newImage: asset("keren_new.jpg") },
   { name: "דנה ולנסקי", oldImage: asset("dana_v_old.jpg"), newImage: asset("dana_v_new.jpg") },
   { name: "רונה גואטה", oldImage: asset("ron_old.jpg"), newImage: asset("ron_new.jpg") },
   { name: "נילי צרפתי", oldImage: asset("nili_old.jpg"), newImage: asset("nili_new.jpg") },
