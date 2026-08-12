@@ -33,21 +33,49 @@ function drawCover(ctx: CanvasRenderingContext2D, source: CanvasImageSource, sou
   ctx.drawImage(source, (sourceWidth - sw) / 2, (sourceHeight - sh) / 2, sw, sh, 0, 0, width, height);
 }
 
-function drawWave(ctx: CanvasRenderingContext2D, text: string, y: number, amplitude: number, color: string, stroke: string, width: number) {
-  const words = (text.trim() || "בלי מילים").split(/\s+/);
-  ctx.font = '700 38px "Polin", Arial';
+function drawWave(ctx: CanvasRenderingContext2D, text: string, y: number, amplitude: number, color: string, stroke: string, width: number, phase = 0) {
+  const words = (text.trim() || "בלי מילים").split(/\s+/).filter(Boolean);
+  const maxWidth = width - 150;
+  let fontSize = 42;
+  let gap = 28;
+  let wordWidths: number[] = [];
+  let sentenceWidth = 0;
+
+  do {
+    ctx.font = `700 ${fontSize}px "Polin", Arial`;
+    gap = Math.max(14, fontSize * .62);
+    wordWidths = words.map((word) => ctx.measureText(word).width);
+    sentenceWidth = wordWidths.reduce((total, wordWidth) => total + wordWidth, 0) + gap * Math.max(0, words.length - 1);
+    fontSize -= 1;
+  } while (sentenceWidth > maxWidth && fontSize >= 23);
+
+  ctx.save();
   ctx.fillStyle = color;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = Math.max(2, fontSize * .075);
   ctx.textAlign = "center";
-  for (let x = -40, i = 0; x < width + 100; i += 1) {
-    const word = words[i % words.length];
-    const wordWidth = ctx.measureText(word).width + 40;
-    const waveY = y + Math.sin((x / width) * Math.PI * 4) * amplitude;
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = stroke;
-    ctx.strokeText(word, x, waveY);
-    ctx.fillText(word, x, waveY);
-    x += wordWidth;
-  }
+  ctx.textBaseline = "middle";
+  const horizontalScale = Math.min(1, maxWidth / sentenceWidth);
+  ctx.translate(width / 2, 0);
+  ctx.scale(horizontalScale, 1);
+  let cursor = width / 2 + sentenceWidth / 2;
+  words.forEach((word, index) => {
+    const x = cursor - wordWidths[index] / 2;
+    const waveY = y + Math.sin((x / width) * Math.PI * 3 + phase) * amplitude;
+    ctx.strokeText(word, x - width / 2, waveY);
+    ctx.fillText(word, x - width / 2, waveY);
+    cursor -= wordWidths[index] + gap;
+  });
+  ctx.restore();
+}
+
+function drawFittedLine(ctx: CanvasRenderingContext2D, text: string, y: number, maxWidth: number, maxFontSize: number, minFontSize: number) {
+  let fontSize = maxFontSize;
+  do {
+    ctx.font = `700 ${fontSize}px "Polin", Arial`;
+    fontSize -= 1;
+  } while (ctx.measureText(text).width > maxWidth && fontSize >= minFontSize);
+  ctx.fillText(text, 540, y, maxWidth);
 }
 
 export function ParticipantExperience() {
@@ -63,20 +91,24 @@ export function ParticipantExperience() {
   const [capturedUrl, setCapturedUrl] = useState("");
   const [notice, setNotice] = useState("");
   const [room, setRoom] = useState(ROOM);
+  const [draftReady, setDraftReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    setRoom(new URLSearchParams(window.location.search).get("room") || ROOM);
+    const requestedRoom = new URLSearchParams(window.location.search).get("room") || ROOM;
+    setRoom(requestedRoom);
     try {
-      const saved = localStorage.getItem("identity-map-draft");
+      const saved = localStorage.getItem(`identity-map-draft:${requestedRoom}`);
       if (saved) setDraft({ ...initial, ...JSON.parse(saved) });
     } catch {}
+    setDraftReady(true);
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem("identity-map-draft", JSON.stringify(draft)); } catch {}
-  }, [draft]);
+    if (!draftReady) return;
+    try { localStorage.setItem(`identity-map-draft:${room}`, JSON.stringify(draft)); } catch {}
+  }, [draft, draftReady, room]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -186,14 +218,13 @@ export function ParticipantExperience() {
     ctx.fillText("המרחק ביני לביני", 540, 72);
     ctx.font = '400 22px "Polin", Arial';
     ctx.fillText("נקודה בזמן", 540, 112);
-    drawWave(ctx, draft.currentPhrase || "מי שאני עכשיו", 430, 34, hasPhoto ? "rgba(255,250,243,.98)" : "#684b59", hasPhoto ? "rgba(42,31,29,.7)" : "rgba(255,253,248,.95)", canvas.width);
-    drawWave(ctx, draft.futurePhrase || "מי שאני בוחרת לקרב", 720, 46, hasPhoto ? "#ffe0a6" : "#a45f3e", hasPhoto ? "rgba(42,31,29,.72)" : "rgba(255,253,248,.95)", canvas.width);
+    drawWave(ctx, draft.currentPhrase || "מי שאני עכשיו", 350, 46, hasPhoto ? "rgba(255,250,243,.98)" : "#684b59", hasPhoto ? "rgba(42,31,29,.7)" : "rgba(255,253,248,.95)", canvas.width, .35);
+    drawWave(ctx, draft.futurePhrase || "מה שמבקש לחיות דרכי", 850, 54, hasPhoto ? "#ffe0a6" : "#a45f3e", hasPhoto ? "rgba(42,31,29,.72)" : "rgba(255,253,248,.95)", canvas.width, Math.PI);
     ctx.fillStyle = "rgba(182,92,74,.96)";
-    ctx.beginPath(); ctx.arc(540, 930, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(540, 1010, 12, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = hasPhoto ? "#fffaf1" : "#352e2b";
-    ctx.font = '700 40px "Polin", Arial';
-    const commitment = (draft.commitment || "התחייבות קטנה אחת").slice(0, 54);
-    ctx.fillText(commitment, 540, 1000);
+    const commitment = draft.commitment || "התחייבות קטנה אחת";
+    drawFittedLine(ctx, commitment, 1080, 880, 38, 24);
     ctx.font = '400 20px "Polin", Arial';
     ctx.fillText("הדימוי הוא עדות לרגע שבחרתי, לא הגדרה של מי שאני.", 540, 1260);
     ctx.font = '700 18px "NotoBrand", Arial';
@@ -238,9 +269,9 @@ export function ParticipantExperience() {
 
         {step === 1 && <div className="scene-card writing-scene"><span className="step-label">01, הקול של עכשיו</span><h1>בלי לסכם את עצמך.<br />ברגע הזה אני...</h1><label className="text-field"><span>שלוש עד שבע מילים, או להשאיר ריק</span><input maxLength={110} value={draft.currentPhrase} onChange={(e) => update("currentPhrase", e.target.value)} placeholder="ברגע הזה אני..." /></label><IdentityMap contribution={contribution} compact /><p className="map-hint">המילים שלך כבר התחילו לנוע.</p><nav className="scene-nav"><button className="secondary" onClick={() => setStep(0)}>חזרה</button><button className="primary" onClick={() => setStep(2)}>הקול הבא</button></nav></div>}
 
-        {step === 2 && <div className="scene-card writing-scene"><span className="step-label">02, הקול שאני בוחרת לקרב</span><h1>כשאני קרובה אליי, אני...</h1><label className="text-field"><span>משפט קצר, עד שמרגיש אמת</span><input maxLength={110} value={draft.futurePhrase} onChange={(e) => update("futurePhrase", e.target.value)} placeholder="כשאני קרובה אליי, אני..." /></label><IdentityMap contribution={contribution} compact /><p className="map-hint">שני הקולות נעים עכשיו באותו מרחב.</p><nav className="scene-nav"><button className="secondary" onClick={() => setStep(1)}>חזרה</button><button className="primary" onClick={() => setStep(3)}>לפתוח את המפה</button></nav></div>}
+        {step === 2 && <div className="scene-card writing-scene"><span className="step-label">02, הקול שמבקש להתקרב</span><h1>כשאני מתקרבת עוד אליי,<br />מה מבקש לחיות דרכי?</h1><label className="text-field"><span>שלוש עד שבע מילים, בגוף ראשון</span><input maxLength={110} value={draft.futurePhrase} onChange={(e) => update("futurePhrase", e.target.value)} placeholder="כשאני מתקרבת עוד אליי, אני..." /></label><IdentityMap contribution={contribution} compact /><p className="map-hint">הקול של עכשיו והקול שמבקש להתקרב נעים יחד.</p><nav className="scene-nav"><button className="secondary" onClick={() => setStep(1)}>חזרה</button><button className="primary" onClick={() => setStep(3)}>לפתוח את המפה</button></nav></div>}
 
-        {step === 3 && <div className="scene-card map-scene"><span className="step-label">03, מפת נקודה בזמן</span><h1>את קובעת כמה קרוב.</h1><label className="range-field"><span><strong>כמה גישה יש לך אליה היום?</strong><output>{draft.closeness < 30 ? "עוד רחוקה" : draft.closeness < 65 ? "בתנועה אליה" : "כבר קרובה"}</output></span><input type="range" min="0" max="100" value={draft.closeness} onChange={(e) => update("closeness", Number(e.target.value))} /></label><label className="text-field"><span>התחייבות קטנה, לא הבטחה גדולה</span><input maxLength={110} value={draft.commitment} onChange={(e) => update("commitment", e.target.value)} placeholder="עד יום רביעי הבא אני נותנת לה מקום דרך..." /></label><div className="field-entry"><span>עכשיו מצטרפות למפה החיה</span><h2>העלי את הקול שלך לשדה המשותף.</h2><p>זה הכפתור שמחבר את המילים שלך, ללא שם, למפה שכולנו רואות עכשיו.</p><button className={`hold-button ${sending ? "sending" : ""}`} disabled={sending} onClick={() => submit(true)}><span>{sending ? "הקול שלך עולה לשדה..." : "להעלות את הקול שלי לשדה המשותף"}</span></button><button className="secondary wide" disabled={sending} onClick={() => submit(false)}>להמשיך עם מפה פרטית</button></div><p className="safety-line">אחרי הבחירה תיפתח נקודת הזמן שלך. המצלמה והשמירה יגיעו רק בשלב הבא.</p><IdentityMap contribution={contribution} /><p className="map-hint">שני הקולות שלך כבר נעים כתדר אחד.</p>{error && <p className="error" role="alert">{error}</p>}<button className="quiet wide" onClick={() => setStep(2)}>חזרה לעריכה</button></div>}
+        {step === 3 && <div className="scene-card map-scene"><span className="step-label">03, מפת נקודה בזמן</span><h1>את קובעת כמה קרוב.</h1><label className="range-field"><span><strong>כמה גישה יש לך היום לקול הזה?</strong><output>{draft.closeness < 30 ? "עוד רחוקה" : draft.closeness < 65 ? "בתנועה אליו" : "כבר קרובה"}</output></span><input type="range" min="0" max="100" value={draft.closeness} onChange={(e) => update("closeness", Number(e.target.value))} /></label><label className="text-field"><span>התחייבות קטנה, לא הבטחה גדולה</span><input maxLength={110} value={draft.commitment} onChange={(e) => update("commitment", e.target.value)} placeholder="עד יום רביעי הבא אני נותנת לקול הזה מקום דרך..." /></label><div className="field-entry"><span>עכשיו מצטרפות למפה החיה</span><h2>העלי את הקול שלך לשדה המשותף.</h2><p>זה הכפתור שמחבר את המילים שלך, ללא שם, למפה שכולנו רואות עכשיו.</p><button className={`hold-button ${sending ? "sending" : ""}`} disabled={sending} onClick={() => submit(true)}><span>{sending ? "הקול שלך עולה לשדה..." : "להעלות את הקול שלי לשדה המשותף"}</span></button><button className="secondary wide" disabled={sending} onClick={() => submit(false)}>להמשיך עם מפה פרטית</button></div><p className="safety-line">אחרי הבחירה תיפתח נקודת הזמן שלך. המצלמה והשמירה יגיעו רק בשלב הבא.</p><IdentityMap contribution={contribution} /><p className="map-hint">שני הקולות שלך כבר נעים כתדר אחד.</p>{error && <p className="error" role="alert">{error}</p>}<button className="quiet wide" onClick={() => setStep(2)}>חזרה לעריכה</button></div>}
 
         {step === 4 && sent && <div className="scene-card capture-scene"><span className="kicker">המפה שלך נוצרה</span><h1>עכשיו אפשר להיכנס לתוכה.</h1><div className="camera-map"><IdentityMap contribution={contribution} />{cameraOn && <video ref={videoRef} muted playsInline autoPlay onLoadedMetadata={() => setCameraReady(true)} />}</div><div className="reflection-gift"><span>נקודה בזמן</span><p>{reflection}</p></div>{!capturedUrl && <div className="camera-actions"><button className="primary" onClick={cameraOn ? stopCamera : startCamera} disabled={openingCamera}>{openingCamera ? "פותחת מצלמה..." : cameraOn ? "סגרי מצלמה" : "פתחי מצלמה, רשות"}</button><button className="secondary" onClick={capturePoint} disabled={cameraOn && !cameraReady}>{cameraOn ? cameraReady ? "צלמי נקודה בזמן" : "רגע, המצלמה עולה..." : "צרי נקודה בזמן בלי מצלמה"}</button></div>}{cameraError && <p className="error" role="status">{cameraError}</p>}{capturedUrl && <div className="captured-card"><img src={capturedUrl} alt="נקודה בזמן עם מילות הזהות שלי" /><div className="capture-share"><button className="primary" onClick={shareCapture}>שתפי בקבוצת הווטסאפ שלנו</button><button className="secondary" onClick={downloadCapture}>שמרי בנייד בתמונות</button><a className="whatsapp-link" href={WHATSAPP_GROUP} target="_blank" rel="noreferrer">פתחי את קבוצת הווטסאפ שלנו</a><button className="quiet" onClick={() => setCapturedUrl("")}>צלמי מחדש</button></div></div>}{notice && <p className="notice">{notice}</p>}<a className="quiet-link" href={`/wall?room=${room}`}>לראות את המפה המשותפת</a></div>}
       </section>

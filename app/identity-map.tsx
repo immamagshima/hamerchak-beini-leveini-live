@@ -38,9 +38,9 @@ export function IdentityMap({ contribution, compact = false }: { contribution: I
     <article className={`living-map ${compact ? "compact-map" : ""}`} style={style} aria-label="מפת הזהות שלי">
       <div className="map-haze" aria-hidden="true" />
       <div className="word-wave current-wave"><div className="wave-track"><FrequencySentence text={contribution.currentPhrase} fallback="מי שאני עכשיו" /><FrequencySentence text={contribution.currentPhrase} fallback="מי שאני עכשיו" hidden /></div></div>
-      <div className="word-wave future-wave"><div className="wave-track"><FrequencySentence text={contribution.futurePhrase} fallback="מי שאני בוחרת לקרב" /><FrequencySentence text={contribution.futurePhrase} fallback="מי שאני בוחרת לקרב" hidden /></div></div>
+      <div className="word-wave future-wave"><div className="wave-track"><FrequencySentence text={contribution.futurePhrase} fallback="מה שמבקש לחיות דרכי" /><FrequencySentence text={contribution.futurePhrase} fallback="מה שמבקש לחיות דרכי" hidden /></div></div>
       <div className="commitment-point"><i /><strong>{contribution.commitment || "הנקודה שאני בוחרת להניח בזמן"}</strong></div>
-      <div className="map-key" aria-hidden="true"><span>עכשיו</span><span>אני מקרבת</span></div>
+      <div className="map-key" aria-hidden="true"><span>עכשיו</span><span>אני מתקרבת</span></div>
     </article>
   );
 }
