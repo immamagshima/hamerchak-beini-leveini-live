@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hamerchak-beini-leveini-live",
+  "account_id": "0da28a91b99f5b342d42e041634b7a97",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.ts",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hamerchak-beini-leveini-db",
+      "database_id": "d5c1bd45-fd1f-4358-97b5-14e91d46f70f",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

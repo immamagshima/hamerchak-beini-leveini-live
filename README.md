@@ -2,6 +2,14 @@
 
 חוויה אינטראקטיבית למפגש האינטגרציה של הכשרת המלוות, מחזור ראשון.
 
+## כניסה לאתר החי
+
+[המרחק ביני לביני, חוויית המשתתפת](https://hamerchak-beini-leveini-live.immamagshima.workers.dev/)
+
+[המפה הקבוצתית](https://hamerchak-beini-leveini-live.immamagshima.workers.dev/wall?room=first-cohort-aug11)
+
+[הבקר למנחה](https://hamerchak-beini-leveini-live.immamagshima.workers.dev/wall?room=first-cohort-aug11&control=1)
+
 ## מה יש באתר
 
 - חוויית משתתפת בעברית וב-RTL
