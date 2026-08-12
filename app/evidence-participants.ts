@@ -20,7 +20,7 @@ export const evidenceParticipants: EvidenceParticipant[] = [
   { name: "דנה סורין", oldImage: asset("dana_s_old.jpg"), newImage: asset("dana_s_new.jpg") },
   { name: "טל פורטוס", oldImage: asset("tal_old.jpg"), newImage: asset("tal_new.jpg") },
   { name: "תמנע", oldImage: asset("timna_old.jpg"), newImage: asset("timna_new.jpg") },
-  { name: "לייה לוצ'יניצר", oldImage: asset("liya_old_upright.jpg"), newImage: asset("liya_new.jpg") },
+  { name: "לייה לוצ'יניצר", oldImage: asset("liya_old_upright.jpg"), newImage: asset("liya_new_upright.jpg") },
   { name: "שלי זיו", oldImage: asset("shelly_old.jpg"), newImage: asset("shelly_new.jpg") },
   { name: "רוזנה רוטמן", oldImage: asset("rozana_old.jpg"), newImage: asset("rozana_new.jpg") },
   { name: "אהובה ויינברג", oldImage: asset("ahuva_old.jpg"), newImage: asset("ahuva_new.jpg") },
