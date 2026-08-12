@@ -31,9 +31,14 @@ export function CollageWall() {
   const [frozen, setFrozen] = useState(false);
   const [control, setControl] = useState(false);
   const [copied, setCopied] = useState("");
-  const room = "first-cohort-aug11";
+  const [room, setRoom] = useState("first-cohort-aug11");
 
-  useEffect(() => { setControl(new URLSearchParams(location.search).get("control") === "1"); }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedRoom = params.get("room") || "first-cohort-aug11";
+    setControl(params.get("control") === "1");
+    setRoom(/^[a-z0-9-]+$/.test(requestedRoom) ? requestedRoom : "first-cohort-aug11");
+  }, []);
 
   const refresh = useCallback(async () => {
     if (frozen) return;
@@ -42,7 +47,7 @@ export function CollageWall() {
       const data = await response.json() as { tiles?: IdentityContribution[] };
       if (response.ok && data.tiles) setTiles(data.tiles);
     } catch {}
-  }, [frozen]);
+  }, [frozen, room]);
 
   useEffect(() => { refresh(); const timer = setInterval(refresh, 1500); return () => clearInterval(timer); }, [refresh]);
   useEffect(() => { const onKey = (event: KeyboardEvent) => { if (event.key.toLowerCase() === "w") setStage("witness"); if (event.key.toLowerCase() === "l") setStage("landing"); if (event.key.toLowerCase() === "b") setStage("building"); if (event.key.toLowerCase() === "f") setFrozen((v) => !v); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, []);
@@ -63,7 +68,7 @@ export function CollageWall() {
   const commitments = useMemo(() => shared.map((tile) => tile.commitment?.trim()).filter(Boolean) as string[], [shared]);
 
   function copyLink(kind: "participant" | "wall") {
-    const url = kind === "participant" ? `${location.origin}/` : `${location.origin}/wall?room=${room}`;
+    const url = kind === "participant" ? `${location.origin}/?room=${room}` : `${location.origin}/wall?room=${room}`;
     navigator.clipboard.writeText(url).then(() => { setCopied(kind); setTimeout(() => setCopied(""), 1600); });
   }
 

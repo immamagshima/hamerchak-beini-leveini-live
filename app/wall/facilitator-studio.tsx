@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { evidenceParticipants } from "../evidence-participants";
 import { EvidenceStage, initialEvidenceState, type EvidenceLiveState } from "../evidence-stage";
 
 type LessonPhase = "evidence" | "personal" | "invitation";
 
 const EVIDENCE_KEY = "identity-evidence-live-state";
+const LIVE_ROOM = "first-cohort-aug11";
+const LIVE_ROOM_KEY = "identity-live-room";
 
 function formatTime(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -21,11 +23,19 @@ export function FacilitatorStudio() {
   const [copied, setCopied] = useState("");
   const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
   const [origin, setOrigin] = useState("");
+  const [liveRoom, setLiveRoom] = useState(LIVE_ROOM);
+  const [liveCount, setLiveCount] = useState(0);
+  const [wallRefresh, setWallRefresh] = useState(0);
+  const [resetArmed, setResetArmed] = useState(false);
+  const [mapNotice, setMapNotice] = useState("");
+  const [mapBusy, setMapBusy] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const invitationRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setOrigin(location.origin);
+    const savedRoom = localStorage.getItem(LIVE_ROOM_KEY);
+    if (savedRoom) setLiveRoom(savedRoom);
     try {
       const saved = JSON.parse(localStorage.getItem(EVIDENCE_KEY) || "null");
       if (saved?.state) {
@@ -53,9 +63,23 @@ export function FacilitatorStudio() {
     return () => window.clearInterval(timer);
   }, [running]);
 
+  const refreshLiveCount = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/tiles?room=${liveRoom}`, { cache: "no-store" });
+      const data = await response.json() as { tiles?: Array<{ shared?: boolean }> };
+      if (response.ok) setLiveCount((data.tiles || []).filter((tile) => tile.shared).length);
+    } catch {}
+  }, [liveRoom]);
+
+  useEffect(() => {
+    refreshLiveCount();
+    const timer = window.setInterval(refreshLiveCount, 1500);
+    return () => window.clearInterval(timer);
+  }, [refreshLiveCount]);
+
   const participant = evidenceParticipants[state.index] || evidenceParticipants[0];
-  const participantUrl = origin ? `${origin}/` : "/";
-  const wallUrl = origin ? `${origin}/wall?room=first-cohort-aug11` : "/wall?room=first-cohort-aug11";
+  const participantUrl = origin ? `${origin}/?room=${liveRoom}` : `/?room=${liveRoom}`;
+  const wallUrl = origin ? `${origin}/wall?room=${liveRoom}` : `/wall?room=${liveRoom}`;
   const remaining = useMemo(() => evidenceParticipants.length - done.length, [done]);
 
   function update(patch: Partial<EvidenceLiveState>) {
@@ -80,6 +104,32 @@ export function FacilitatorStudio() {
 
   function copy(text: string, kind: string) {
     navigator.clipboard.writeText(text).then(() => { setCopied(kind); window.setTimeout(() => setCopied(""), 1600); });
+  }
+
+  async function collectNow() {
+    setMapBusy(true);
+    setMapNotice("");
+    await refreshLiveCount();
+    setWallRefresh((value) => value + 1);
+    setMapNotice("המפה רועננה. כל מי שכבר העלתה קול נמצאת עכשיו בשדה.");
+    setMapBusy(false);
+  }
+
+  async function resetLiveMap() {
+    if (!resetArmed) {
+      setResetArmed(true);
+      setMapNotice("האיפוס יפתח חדר חדש ונקי. הנקודות הקודמות יישמרו בחדר הישן. לחצי שוב כדי לאשר.");
+      return;
+    }
+    setMapBusy(true);
+    const nextRoom = `first-cohort-${Date.now().toString(36)}`;
+    localStorage.setItem(LIVE_ROOM_KEY, nextRoom);
+    setLiveRoom(nextRoom);
+    setLiveCount(0);
+    setWallRefresh((value) => value + 1);
+    setResetArmed(false);
+    setMapNotice("נפתח חדר חדש ונקי. העתיקי מכאן את הקישור החדש למשתתפות. הקליטה החיה כבר פעילה.");
+    setMapBusy(false);
   }
 
   return (
@@ -108,8 +158,8 @@ export function FacilitatorStudio() {
       </section>}
 
       {phase === "personal" && <section className="lesson-personal-stage">
-        <div className="lesson-copy"><span>חלק שני</span><h1>עכשיו כל אחת פוגשת<br />את מי שהיא היום.</h1><p>הקול שלה עולה לשדה המשותף ללא שם. המפה מתעדכנת כאן בזמן אמת.</p><div className="lesson-link"><code>{participantUrl}</code><button onClick={() => copy(participantUrl, "participant")}>{copied === "participant" ? "הועתק" : "העתיקי קישור למשתתפות"}</button></div><div className="lesson-buttons"><button className="primary" onClick={() => window.open(participantUrl, "participantExperience")}>פתחי חוויית משתתפת</button><button onClick={() => window.open(wallUrl, "collectiveMap")}>פתחי את המפה להקרנה</button></div></div>
-        <div className="wall-window"><iframe title="המפה הקבוצתית החיה" src={wallUrl} /></div>
+        <div className="lesson-copy"><span>חלק שני</span><h1>עכשיו כל אחת פוגשת<br />את מי שהיא היום.</h1><p>הקול שלה עולה לשדה המשותף ללא שם. המפה קולטת קולות חדשים אוטומטית, בתוך עד שתי שניות.</p><div className="live-operations"><div className="live-status"><i /><span>קליטה חיה פעילה</span><strong>{liveCount} קולות בשדה</strong></div><p>אפשר להתחיל את חמש דקות השידור. מי שתצטרף תוך כדי תופיע לבד.</p><small>חדר פעיל: {liveRoom}</small><div><button className="primary" disabled={mapBusy} onClick={collectNow}>{mapBusy ? "רגע..." : "קלטי עכשיו את כולן"}</button><button className={resetArmed ? "danger armed" : "danger"} disabled={mapBusy} onClick={resetLiveMap}>{resetArmed ? "אישור סופי, פתחי חדר נקי" : "אפסי לפתיחת המפגש"}</button></div>{mapNotice && <output>{mapNotice}</output>}</div><div className="lesson-link"><code>{participantUrl}</code><button onClick={() => copy(participantUrl, "participant")}>{copied === "participant" ? "הועתק" : "העתיקי קישור חדש למשתתפות"}</button></div><div className="lesson-buttons"><button className="primary" onClick={() => window.open(participantUrl, "participantExperience")}>פתחי חוויית משתתפת</button><button onClick={() => window.open(wallUrl, "collectiveMap")}>פתחי את המפה להקרנה</button></div></div>
+        <div className="wall-window"><iframe key={wallRefresh} title="המפה הקבוצתית החיה" src={wallUrl} /></div>
       </section>}
 
       {phase === "invitation" && <section className="invitation-stage" ref={invitationRef}>
