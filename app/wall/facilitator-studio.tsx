@@ -28,7 +28,10 @@ export function FacilitatorStudio() {
     setOrigin(location.origin);
     try {
       const saved = JSON.parse(localStorage.getItem(EVIDENCE_KEY) || "null");
-      if (saved?.state) setState({ ...initialEvidenceState, ...saved.state });
+      if (saved?.state) {
+        const journey = Number(saved.state.newCloseness ?? saved.state.oldDistance ?? 50);
+        setState({ ...initialEvidenceState, ...saved.state, oldDistance: journey, newCloseness: journey });
+      }
       if (Array.isArray(saved?.done)) setDone(saved.done);
     } catch {}
     channelRef.current = "BroadcastChannel" in window ? new BroadcastChannel("identity-evidence-live") : null;
@@ -57,6 +60,10 @@ export function FacilitatorStudio() {
 
   function update(patch: Partial<EvidenceLiveState>) {
     setState((value) => ({ ...value, ...patch }));
+  }
+
+  function updateJourney(value: number) {
+    update({ oldDistance: value, newCloseness: value });
   }
 
   function select(index: number) {
@@ -93,8 +100,7 @@ export function FacilitatorStudio() {
           <div className="controller-summary"><strong>{done.length} מתוך {evidenceParticipants.length} הושלמו</strong><span>{remaining} נשארו</span></div>
           <div className="evidence-timer"><output>{formatTime(seconds)}</output><div><button onClick={() => setRunning((value) => !value)}>{running ? "השהיה" : seconds === 180 ? "התחלה" : "המשך"}</button><button onClick={() => { setSeconds(180); setRunning(false); }}>איפוס</button><button onClick={() => setSeconds((value) => value + 60)}>דקה +</button></div></div>
           <div className="reveal-controls"><button className={state.showOld ? "active" : ""} onClick={() => update({ showOld: !state.showOld })}>זהות ישנה</button><button className={state.showNew ? "active" : ""} onClick={() => update({ showNew: !state.showNew })}>זהות חדשה</button></div>
-          <label className="facilitator-range"><span>המרחק מהזהות הישנה <output>{state.oldDistance} / 100</output></span><input type="range" min="0" max="100" value={state.oldDistance} onChange={(event) => update({ oldDistance: Number(event.target.value) })} /></label>
-          <label className="facilitator-range"><span>הקרבה לזהות החדשה <output>{state.newCloseness} / 100</output></span><input type="range" min="0" max="100" value={state.newCloseness} onChange={(event) => update({ newCloseness: Number(event.target.value) })} /></label>
+          <label className="facilitator-range journey-range"><span>איפה היא נמצאת היום בתנועה ביניהן? <output>{state.newCloseness} / 100</output></span><input type="range" min="0" max="100" value={state.newCloseness} onChange={(event) => updateJourney(Number(event.target.value))} /><small><b>עוד קרובה לישנה</b><b>קרובה לחדשה</b></small></label>
           <label className="facilitator-statement"><span>המשפט שנשאר</span><input value={state.statement} maxLength={110} onChange={(event) => update({ statement: event.target.value })} placeholder="אפשר גם בלי משפט" /></label>
           <div className="controller-actions"><button className="primary" onClick={completeAndNext}>הושלם, לבאה</button><button onClick={() => select(Math.max(0, state.index - 1))}>הקודמת</button><button onClick={() => window.open("/evidence", "identityEvidenceStage")}>פתחי מסך הקרנה נקי</button></div>
           <div className="people-strip" aria-label="רשימת המשתתפות">{evidenceParticipants.map((person, index) => <button key={person.name} className={`${index === state.index ? "active" : ""} ${done.includes(index) ? "done" : ""}`} onClick={() => select(index)}><i />{person.name}</button>)}</div>

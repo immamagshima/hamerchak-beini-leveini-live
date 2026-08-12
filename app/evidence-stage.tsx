@@ -31,22 +31,23 @@ export function EvidenceStage({ participant, state, onImage }: { participant: Ev
       <div className="evidence-images">
         <figure className={`evidence-image-card old-evidence ${participant.split ? "split-old" : ""} ${state.showOld ? "is-visible" : ""}`}>
           <button type="button" onClick={() => onImage?.(participant.oldImage, `${participant.name}, הזהות הישנה`)} aria-label={`פתחי את תמונת הזהות הישנה של ${participant.name}`}>
-            <span className="evidence-image-viewport"><img src={participant.oldImage} alt={`הזהות הישנה של ${participant.name}`} /></span>
+            <span className="evidence-image-viewport"><img src={participant.oldImage} alt={`הזהות הישנה של ${participant.name}`} /><span className="image-open-cue">פתיחה מלאה</span></span>
           </button>
-          <figcaption><b>הזהות הישנה</b><span>{state.oldDistance} / 100 מרחק ממנה היום</span></figcaption>
+          <figcaption><b>הזהות הישנה</b><span>{state.oldDistance} / 100, כמה היא כבר מנהלת פחות</span></figcaption>
         </figure>
         <div className="identity-bridge" aria-hidden="true"><i /><span>מכאן</span><em>אליי</em></div>
         <figure className={`evidence-image-card new-evidence ${participant.split ? "split-new" : ""} ${state.showNew ? "is-visible" : ""}`}>
           <button type="button" onClick={() => onImage?.(participant.newImage, `${participant.name}, הזהות החדשה`)} aria-label={`פתחי את תמונת הזהות החדשה של ${participant.name}`}>
-            <span className="evidence-image-viewport"><img src={participant.newImage} alt={`הזהות החדשה של ${participant.name}`} /></span>
+            <span className="evidence-image-viewport"><img src={participant.newImage} alt={`הזהות החדשה של ${participant.name}`} /><span className="image-open-cue">פתיחה מלאה</span></span>
           </button>
-          <figcaption><b>הזהות החדשה</b><span>{state.newCloseness} / 100 קרבה אליה היום</span></figcaption>
+          <figcaption><b>הזהות החדשה</b><span>{state.newCloseness} / 100, כמה היא כבר נגישה</span></figcaption>
         </figure>
       </div>
 
-      <div className="evidence-scale" aria-label="מפת המרחק והקרבה">
-        <span>הישנה מנהלת פחות</span><div><i style={{ insetInlineStart: `${state.oldDistance}%` }} /><b style={{ insetInlineEnd: `${state.newCloseness}%` }} /></div><span>החדשה נגישה יותר</span>
+      <div className="evidence-scale" aria-label={`התנועה מהזהות הישנה לזהות החדשה, ${state.newCloseness} מתוך 100`}>
+        <span>עוד קרובה לישנה</span><div><b className="journey-marker" style={{ insetInlineStart: `${state.newCloseness}%` }} /></div><span>כבר קרובה לחדשה</span>
       </div>
+      <div className="evidence-scale-readout"><span>מתרחקת מהישנה: {state.oldDistance}</span><i aria-hidden="true" /><span>מתקרבת לחדשה: {state.newCloseness}</span></div>
       {state.statement && <blockquote>״{state.statement}״</blockquote>}
     </section>
   );
